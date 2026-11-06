@@ -88,7 +88,7 @@ export async function POST(request: Request) {
     const id = randomUUID()
     const code = randomUUID()
     const audioName = `web-${id}.wav`
-    const relativeAudioPath = `temp/${audioName}`
+    const relativeAudioPath = audioName
     audioPath = path.join(synthesisAudioDir, audioName)
     await mkdir(synthesisAudioDir, { recursive: true })
 
