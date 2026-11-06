@@ -362,19 +362,7 @@ Describe the reproduction steps in detail, with screenshots if possible.
 
       ![img](./README.assets/15.png)
 
-## 7. How to Interact in real time
 
-Duix.Avatar's digital human realizes digital human cloning and non-real-time video synthesis.
-
-If you want a digital human to support interaction, you can visit [duix.com](www.duix.com) to experience the free test.
-
-## 8. Contact
-
-If you have any questions, please raise an issue or contact us at james@duix.com
-
-## 9. License
-
-https://github.com/duixcom/Duix.Avatar/blob/main/LICENSE
 
 ## 10. Acknowledgments
 

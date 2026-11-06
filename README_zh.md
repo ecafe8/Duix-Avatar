@@ -193,7 +193,7 @@ Duix.Avatar是一款专为Windows系统设计的全离线视频合成工具，�
 采用Docker方式安装，docker-compose如下：
 
 1. `docker-compose.yml`文件在`/deploy`目录下。
-2. 在`/deploy`目录执行`docker-compose up -d`，<u>如果您想使用lite版本，请执行`docker-compose -f docker-compose-lite.yml up -d`</u>
+2. 在`/deploy`目录执行`docker-compose up -d`，<u>如果您想使用linux版本，请执行`docker-compose -f docker-compose-linux.yml up -d`</u>
 3. 耐心等待一段时间（半小时左右，速度取决于网速），下载会消耗70G左右流量，注意连WIFI
 4. 看到Dokcer 中出现三个服务，表示成功了（lite版本只有一个服务`Duix.Avatar-gen-video`）
 
@@ -410,16 +410,6 @@ docker-compose -f docker-compose-linux.yml up -d
      找到关键位置，或点开我们的三个Docker服务，如下图操作“复制”。
 
      ![image-20250308215812201](./doc/常见问题.assets/image-20250308215812201.jpg)
-
-## 联系我们
-
-```
-技术交流 & 商务合作联系邮箱： james@duix.com
-```
-
-## 协议
-
-[LICENSE](./LICENSE)
 
 ## 致谢
 
