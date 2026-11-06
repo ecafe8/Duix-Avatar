@@ -48,6 +48,7 @@ type Health = {
 }
 
 type ViewName = 'studio' | 'library' | 'tasks'
+type CreationStep = 1 | 2 | 3
 
 const navigation: { id: ViewName; label: string; icon: typeof Clapperboard }[] = [
   { id: 'studio', label: '创作工作台', icon: Sparkles },
@@ -72,6 +73,7 @@ function statusLabel(status: string) {
 
 export default function Studio() {
   const [view, setView] = useState<ViewName>('studio')
+  const [creationStep, setCreationStep] = useState<CreationStep>(1)
   const [avatars, setAvatars] = useState<Avatar[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [health, setHealth] = useState<Health | null>(null)
@@ -115,6 +117,19 @@ export default function Studio() {
   const selectedAvatar = avatars.find((avatar) => avatar.id === selectedId)
   const pendingCount = tasks.filter((task) => task.status === 'processing').length
 
+  function openCreationStep(step: CreationStep) {
+    if (step >= 2 && !selectedId) {
+      setNotice('先选择一个数字人，或上传视频创建数字人。')
+      return
+    }
+    if (step === 3 && !text.trim()) {
+      setNotice('先填写要说的文案。')
+      return
+    }
+    setNotice('')
+    setCreationStep(step)
+  }
+
   async function submitModel(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!uploadFile || !uploadName.trim()) {
@@ -135,6 +150,7 @@ export default function Studio() {
       setUploadName('')
       setUploadFile(null)
       setSelectedId(result.avatar.id)
+      setCreationStep(2)
       setNotice('数字人已添加，可以开始合成。')
       await refresh()
     } catch (error) {
@@ -251,8 +267,8 @@ export default function Studio() {
                   <p className="eyebrow">
                     CREATION DESK <span>01</span>
                   </p>
-                  <h1>让数字人替你开口。</h1>
-                  <p className="heading-subtitle">从声音到画面，一次完成。</p>
+                  <h1>三步，完成一条数字人视频。</h1>
+                  <p className="heading-subtitle">先选形象，再写文案，最后生成视频。</p>
                 </div>
                 <div className="heading-mark">
                   <AudioLines size={22} />
@@ -265,7 +281,39 @@ export default function Studio() {
                 </div>
               </div>
 
-              <div className="studio-grid">
+              <nav className="workflow-progress" aria-label="视频创作步骤">
+                {(
+                  [
+                    { id: 1, title: '选择数字人', detail: '选择已有形象或添加视频' },
+                    { id: 2, title: '编写文案', detail: '输入数字人要说的话' },
+                    { id: 3, title: '确认生成', detail: '检查内容并开始合成' },
+                  ] as const
+                ).map((step) => (
+                  <button
+                    className={
+                      creationStep === step.id
+                        ? 'workflow-step active'
+                        : creationStep > step.id
+                          ? 'workflow-step complete'
+                          : 'workflow-step'
+                    }
+                    key={step.id}
+                    type="button"
+                    aria-current={creationStep === step.id ? 'step' : undefined}
+                    onClick={() => openCreationStep(step.id)}
+                  >
+                    <span className="workflow-marker">
+                      {creationStep > step.id ? <Check size={14} /> : `0${step.id}`}
+                    </span>
+                    <span className="workflow-step-copy">
+                      <strong>{step.title}</strong>
+                      <small>{step.detail}</small>
+                    </span>
+                  </button>
+                ))}
+              </nav>
+
+              <div className="studio-grid guided-layout">
                 <section className="synthesis-panel">
                   <div className="section-heading">
                     <div>
@@ -276,94 +324,220 @@ export default function Studio() {
                       <Activity size={14} /> GPU 合成
                     </span>
                   </div>
-                  <form className="synthesis-form" onSubmit={submitSynthesis}>
-                    <label className="field-label" htmlFor="avatar-select">
-                      选择数字人
-                    </label>
-                    <div className="select-wrap">
-                      <select
-                        id="avatar-select"
-                        value={selectedId}
-                        onChange={(event) => setSelectedId(event.target.value)}
-                        disabled={!avatars.length}
-                      >
-                        {!avatars.length && <option value="">先添加一个数字人</option>}
-                        {avatars.map((avatar) => (
-                          <option value={avatar.id} key={avatar.id}>
-                            {avatar.name}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown size={16} />
-                    </div>
-                    {selectedAvatar ? (
-                      <div className="selected-avatar">
-                        <video
-                          src={`/api/media?modelId=${selectedAvatar.id}`}
-                          muted
-                          playsInline
-                          preload="metadata"
-                        />
-                        <span>
-                          <b>{selectedAvatar.name}</b>
-                          <small>已训练声音模型</small>
-                        </span>
-                        <Check size={16} />
-                      </div>
-                    ) : (
-                      <button
-                        className="empty-model"
-                        type="button"
-                        onClick={() => setUploadOpen(true)}
-                      >
-                        <Plus size={18} />
-                        <span>上传模特视频，创建第一个数字人</span>
-                        <ArrowUpRight size={15} />
-                      </button>
-                    )}
-                    <label className="field-label" htmlFor="task-title">
-                      作品名称 <span>可选</span>
-                    </label>
-                    <input
-                      id="task-title"
-                      className="text-input"
-                      value={taskName}
-                      onChange={(event) => setTaskName(event.target.value)}
-                      placeholder="例如：新品介绍"
-                      maxLength={80}
-                    />
-                    <div className="script-label">
-                      <label className="field-label" htmlFor="script">
-                        合成文案
-                      </label>
-                      <span>{text.length} / 5000</span>
-                    </div>
-                    <textarea
-                      id="script"
-                      value={text}
-                      onChange={(event) => setText(event.target.value)}
-                      placeholder="输入数字人要说的话…"
-                      maxLength={5000}
-                      rows={6}
-                    />
-                    <div className="form-bottom">
-                      <span>
-                        <Sparkles size={14} /> 将使用所选数字人的声音
-                      </span>
-                      <button
-                        className="primary-button"
-                        type="submit"
-                        disabled={busy !== null || !avatars.length}
-                      >
-                        {busy === 'synthesis' ? (
-                          <LoaderCircle className="spin" size={17} />
+                  <form
+                    className="synthesis-form"
+                    onSubmit={(event) => {
+                      if (creationStep === 3) void submitSynthesis(event)
+                      else event.preventDefault()
+                    }}
+                  >
+                    {creationStep === 1 && (
+                      <div className="wizard-pane">
+                        <p className="wizard-intro">
+                          选择一个已训练的数字人，或先从视频创建新形象。
+                        </p>
+                        <label className="field-label" htmlFor="avatar-select">
+                          当前形象
+                        </label>
+                        <div className="select-wrap">
+                          <select
+                            id="avatar-select"
+                            value={selectedId}
+                            onChange={(event) => setSelectedId(event.target.value)}
+                            disabled={!avatars.length}
+                          >
+                            {!avatars.length && <option value="">还没有数字人</option>}
+                            {avatars.map((avatar) => (
+                              <option value={avatar.id} key={avatar.id}>
+                                {avatar.name}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown size={16} />
+                        </div>
+                        {selectedAvatar ? (
+                          <div className="selected-avatar">
+                            <video
+                              src={`/api/media?modelId=${selectedAvatar.id}`}
+                              muted
+                              playsInline
+                              preload="metadata"
+                            />
+                            <span>
+                              <b>{selectedAvatar.name}</b>
+                              <small>声音模型已就绪</small>
+                            </span>
+                            <Check size={16} />
+                          </div>
                         ) : (
-                          <Clapperboard size={17} />
+                          <button
+                            className="empty-model"
+                            type="button"
+                            onClick={() => setUploadOpen(true)}
+                          >
+                            <Plus size={18} />
+                            <span>上传一个视频，创建数字人</span>
+                            <ArrowUpRight size={15} />
+                          </button>
                         )}
-                        {busy === 'synthesis' ? '提交中' : '开始合成'}
-                        <ArrowUpRight size={15} />
-                      </button>
-                    </div>
+                        <div className="workflow-guidance">
+                          <Film size={17} />
+                          <span>
+                            <strong>数字人需要什么素材？</strong>
+                            <small>
+                              一个有人物画面且带清晰人声的视频即可。系统会从视频提取画面并训练声音，不需要单独上传音频或图片。
+                            </small>
+                          </span>
+                        </div>
+                        <div className="workflow-actions">
+                          <span>第 1 步，共 3 步</span>
+                          <button
+                            className="primary-button"
+                            type="button"
+                            disabled={!selectedAvatar}
+                            onClick={() => openCreationStep(2)}
+                          >
+                            下一步：写文案 <ArrowUpRight size={15} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {creationStep === 2 && (
+                      <div className="wizard-pane">
+                        <div className="step-context">
+                          <span>本次使用</span>
+                          <strong>{selectedAvatar?.name}</strong>
+                          <button
+                            className="text-button"
+                            type="button"
+                            onClick={() => openCreationStep(1)}
+                          >
+                            更换形象
+                          </button>
+                        </div>
+                        <label className="field-label" htmlFor="task-title">
+                          作品名称 <span>可选</span>
+                        </label>
+                        <input
+                          id="task-title"
+                          className="text-input"
+                          value={taskName}
+                          onChange={(event) => setTaskName(event.target.value)}
+                          placeholder="例如：新品介绍"
+                          maxLength={80}
+                        />
+                        <div className="script-label">
+                          <label className="field-label" htmlFor="script">
+                            数字人要说的话
+                          </label>
+                          <span>{text.length} / 5000</span>
+                        </div>
+                        <textarea
+                          id="script"
+                          value={text}
+                          onChange={(event) => setText(event.target.value)}
+                          placeholder="输入完整文案，系统会用该数字人的声音朗读…"
+                          maxLength={5000}
+                          rows={7}
+                        />
+                        <div className="workflow-guidance compact-guidance">
+                          <AudioLines size={17} />
+                          <span>
+                            <strong>声音会自动生成</strong>
+                            <small>使用创建数字人时从视频训练出的声音，无需再上传配音文件。</small>
+                          </span>
+                        </div>
+                        <div className="workflow-actions">
+                          <button
+                            className="secondary-button"
+                            type="button"
+                            onClick={() => openCreationStep(1)}
+                          >
+                            上一步
+                          </button>
+                          <button
+                            className="primary-button"
+                            type="button"
+                            disabled={!text.trim()}
+                            onClick={() => openCreationStep(3)}
+                          >
+                            下一步：确认内容 <ArrowUpRight size={15} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {creationStep === 3 && (
+                      <div className="wizard-pane">
+                        <p className="wizard-intro">
+                          确认形象和文案后，系统会先生成语音，再提交视频合成。
+                        </p>
+                        <div className="review-avatar">
+                          {selectedAvatar && (
+                            <video
+                              src={`/api/media?modelId=${selectedAvatar.id}`}
+                              muted
+                              playsInline
+                              preload="metadata"
+                            />
+                          )}
+                          <span>
+                            <small>数字人</small>
+                            <strong>{selectedAvatar?.name}</strong>
+                          </span>
+                          <button
+                            className="text-button"
+                            type="button"
+                            onClick={() => openCreationStep(1)}
+                          >
+                            更换
+                          </button>
+                        </div>
+                        <div className="review-title">
+                          <span>作品名称</span>
+                          <strong>{taskName.trim() || '未命名作品'}</strong>
+                        </div>
+                        <div className="review-script">
+                          <div>
+                            <span>合成文案</span>
+                            <button
+                              className="text-button"
+                              type="button"
+                              onClick={() => openCreationStep(2)}
+                            >
+                              编辑
+                            </button>
+                          </div>
+                          <p>{text}</p>
+                        </div>
+                        <div className="workflow-guidance compact-guidance">
+                          <Clapperboard size={17} />
+                          <span>
+                            <strong>准备就绪</strong>
+                            <small>提交后可在“合成记录”中查看进度，完成后下载视频。</small>
+                          </span>
+                        </div>
+                        <div className="workflow-actions">
+                          <button
+                            className="secondary-button"
+                            type="button"
+                            onClick={() => openCreationStep(2)}
+                          >
+                            上一步
+                          </button>
+                          <button className="primary-button" type="submit" disabled={busy !== null}>
+                            {busy === 'synthesis' ? (
+                              <LoaderCircle className="spin" size={17} />
+                            ) : (
+                              <Sparkles size={17} />
+                            )}
+                            {busy === 'synthesis' ? '提交中' : '确认并生成视频'}
+                            <ArrowUpRight size={15} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </form>
                 </section>
 
@@ -586,7 +760,7 @@ export default function Studio() {
                 required
               />
               <label className="field-label upload-label" htmlFor="avatar-video">
-                模特视频
+                人物参考视频 <span>必需</span>
               </label>
               <label
                 className={uploadFile ? 'dropzone has-file' : 'dropzone'}
@@ -603,13 +777,15 @@ export default function Studio() {
                 <span>
                   {uploadFile
                     ? `${(uploadFile.size / 1024 / 1024).toFixed(1)} MB`
-                    : 'MP4、MOV、MKV、WebM 或 AVI，最大 1 GB'}
+                    : 'MP4、MOV、MKV、WebM 或 AVI，建议包含清晰人声'}
                 </span>
                 <FolderOpen size={16} className="dropzone-folder" />
               </label>
               <div className="upload-note">
                 <Cpu size={15} />
-                <span>视频会上传至服务端工作目录，并自动转码、提取音频和训练声音模型。</span>
+                <span>
+                  只需这一个视频：系统会提取画面用于口型合成，并提取语音训练声音。无需另传音频或图片；没有清晰人声的视频无法训练声音。
+                </span>
               </div>
               <div className="dialog-actions">
                 <button
