@@ -268,6 +268,8 @@ cd /deploy
 docker-compose -f docker-compose-linux.yml up -d
 ```
 
+Linux Compose 同时启动局域网 Web 客户端。启动后在其他设备浏览器访问 `http://<运行 Docker 的主机局域网 IP>:3000`。默认数据目录沿用 `duix_avatar_data`；如需指定工作目录或修改 Web 端口，可将 `deploy/.env.example` 复制为 `deploy/.env` 后调整路径和端口。
+
 > 与windows上拉镜像一样，如果下载太慢，需要指定国内镜像源方法是在`/etc/docker/daemon.json`文件中添加：
 >
 > ```json

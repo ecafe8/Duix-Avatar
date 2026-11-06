@@ -5,4 +5,5 @@ out
 .DS_Store
 *.log*
 
-./duix_avatar_data
+duix_avatar_data/
+deploy/.env
