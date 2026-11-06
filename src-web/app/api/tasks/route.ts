@@ -121,7 +121,7 @@ export async function POST(request: Request) {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         audio_url: relativeAudioPath,
-        video_url: avatar.videoPath,
+        video_url: path.join('/code/data', avatar.videoPath),
         code,
         chaofen: 0,
         watermark_switch: 0,
