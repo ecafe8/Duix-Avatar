@@ -6,4 +6,6 @@ out
 *.log*
 
 duix_avatar_data/
+models/
 deploy/.env
+.env.local
