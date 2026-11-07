@@ -41,7 +41,12 @@ export async function GET() {
           .where(eq(tasks.id, task.id))
           .run()
       } else if (result.code === 10000 && data?.status === 2 && data.result) {
-        const outputPath = data.result.replaceAll('\\', '/').replace(/^\/code\/data\//, '')
+        // 服务返回的结果通常是 \文件名.mp4 这类容器侧相对名，实际文件落在
+        // /code/data/temp/ 下；统一成宿主机可解析的 temp/文件名.mp4。
+        const normalizedResult = data.result.replaceAll('\\', '/')
+        const outputPath = normalizedResult.startsWith('/code/data/')
+          ? normalizedResult.slice('/code/data/'.length)
+          : `temp/${normalizedResult.replace(/^\/+/, '').split('/').pop()}`
         db.update(tasks)
           .set({
             status: 'completed',
@@ -116,12 +121,23 @@ export async function POST(request: Request) {
     if (!audioResponse.ok) throw new Error(`TTS 音频生成失败 (${audioResponse.status})`)
     await writeFile(audioPath, Buffer.from(await audioResponse.arrayBuffer()))
 
+    // 视频合成服务运行在 Linux 容器内，路径必须是正斜杠。
+    // Windows 上 path.join 会拼出 \code\data\... ，ffprobe 读不到视频后
+    // get_video_info 会因 fps/duration 为 0 抛出 ZeroDivisionError。
+    const containerVideoPath = path.posix.join(
+      '/code/data',
+      avatar.videoPath
+        .replaceAll('\\', '/')
+        .replace(/^\/?code\/data\//, '')
+        .replace(/^\/+/, ''),
+    )
+
     const submitResponse = await fetch(`${f2fApiUrl}/submit`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         audio_url: relativeAudioPath,
-        video_url: path.join('/code/data', avatar.videoPath),
+        video_url: containerVideoPath,
         code,
         chaofen: 0,
         watermark_switch: 0,

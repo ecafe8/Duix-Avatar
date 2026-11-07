@@ -26,3 +26,14 @@
 - `docker compose -f deploy/docker-compose.yml config` 已验证卷解析为 `D:/work/ai/Duix-Avatar/models/face2face` 与 `models/voice/data`，端口 18180 / 10095 / 8383。
 - 磁盘：C 盘剩 251G，D 盘 196G 可用，足够放约 70G 镜像。
 - npm 缓存与日志改用项目内 `models/.cache/npm`（`npm install --cache ...`），不落用户目录。
+
+## Web 端调用容器的路径规则（2026-11-07 定案）
+- 三个容器都是 Linux，任何传给 8383 / 18180 的路径必须是 POSIX 正斜杠；Windows 的 `path.join` 会生成反斜杠，导致 ffprobe 读不到视频 → `get_video_info` 抛 `ZeroDivisionError: float division by zero`。统一用 `path.posix.join` 并先 `replaceAll('\\','/')`。
+- 视频合成服务把结果放在 `/code/data/temp/<code>-r.mp4`，但 `query` 返回的 result 常是 `\<code>-r.mp4` 这类前导反斜杠的短名；写入 `web_task.output_path` 前必须映射成 `temp/<文件名>.mp4`，否则 `/api/media` 404。
+- 排查入口：`models/face2face/log/log.log`、`docker logs duix-avatar-gen-video`（含 Python 堆栈）、`models/.cache/npm/dev.log`（Web API 请求）、`models/web/duix-web.sqlite` 的 `web_task` / `web_avatar` 表。
+- 容器内核心模块 `my_utils/av_utils_ffmpeg` 与 `service/trans_dh_service` 是 Cython 编译的 .so，可直接 `docker exec ... python -c` 导入函数做低成本复现。
+
+## Web 端运行时：必须 Node，不能用 Bun 运行时（2026-11-07 定案）
+- `src-web/package.json` 的 dev / build / start 已改为显式 `node ./node_modules/next/dist/bin/next ...`，`bun dev` 可用但 Bun 只作脚本运行器。
+- 原因：Bun 1.4.0 无法解析 Next 16 Turbopack 生成的带 hash SSR external 别名（`better-sqlite3-<hash>` → `Cannot find module`）；即使换 `--webpack` 绕开，Bun 也无法 dlopen better-sqlite3 原生模块（`ERR_DLOPEN_FAILED`, bun#4290）。
+- 不要再尝试 `bun --bun`、`bun x next dev --webpack` 或清 `.next` 缓存来修这个 500；换 bun:sqlite 会破坏 Electron/Node 部署，不采纳。
